@@ -18,7 +18,7 @@ class CSporkManager;
     - This would result in old clients getting confused about which spork is for what
 */
 static const int SPORK_START                                            = 10001;
-static const int SPORK_END                                              = 10013;
+static const int SPORK_END                                              = 10015;
 
 static const int SPORK_2_INSTANTSEND_ENABLED                            = 10001;
 static const int SPORK_3_INSTANTSEND_BLOCK_FILTERING                    = 10002;
@@ -30,6 +30,7 @@ static const int SPORK_12_RECONSIDER_BLOCKS                             = 10011;
 static const int SPORK_13_OLD_SUPERBLOCK_FLAG                           = 10012;
 static const int SPORK_14_REQUIRE_SENTINEL_FLAG                         = 10013;
 static const int SPORK_15_REQUIRE_NEW_PROTOCOL                         = 10014;
+static const int SPORK_16_STRICT_MASTERNODE_PAYMENT_ENFORCEMENT         = 10015;
 
 static const int64_t SPORK_2_INSTANTSEND_ENABLED_DEFAULT                = 0;            // ON
 static const int64_t SPORK_3_INSTANTSEND_BLOCK_FILTERING_DEFAULT        = 0;            // ON
@@ -41,6 +42,7 @@ static const int64_t SPORK_12_RECONSIDER_BLOCKS_DEFAULT                 = 0;    
 static const int64_t SPORK_13_OLD_SUPERBLOCK_FLAG_DEFAULT               = 4070908800ULL;// OFF
 static const int64_t SPORK_14_REQUIRE_SENTINEL_FLAG_DEFAULT             = 4070908800ULL;// OFF
 static const int64_t SPORK_15_REQUIRE_NEW_PROTOCOL_DEFAULT              = 1591491600;   // ON
+static const int64_t SPORK_16_STRICT_MASTERNODE_PAYMENT_ENFORCEMENT_DEFAULT = 4070908800ULL; // OFF
 
 extern std::map<uint256, CSporkMessage> mapSporks;
 extern CSporkManager sporkManager;

@@ -61,6 +61,10 @@ static const unsigned int MAX_PROTOCOL_MESSAGE_LENGTH = 3 * 1024 * 1024;
 static const unsigned int MAX_SUBVERSION_LENGTH = 256;
 /** Maximum number of outgoing nodes */
 static const int MAX_OUTBOUND_CONNECTIONS = 8;
+/** Default for -maxoutboundconnections */
+static const int DEFAULT_MAX_OUTBOUND_CONNECTIONS = MAX_OUTBOUND_CONNECTIONS;
+/** Maximum configurable automatic outbound connections */
+static const int MAX_MAX_OUTBOUND_CONNECTIONS = 32;
 /** Maximum number if outgoing masternodes */
 static const int MAX_OUTBOUND_MASTERNODE_CONNECTIONS = 20;
 /** -listen default */

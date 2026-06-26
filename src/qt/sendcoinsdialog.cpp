@@ -462,6 +462,7 @@ SendCoinsEntry *SendCoinsDialog::addEntry()
     connect(entry, SIGNAL(removeEntry(SendCoinsEntry*)), this, SLOT(removeEntry(SendCoinsEntry*)));
     connect(entry, SIGNAL(payAmountChanged()), this, SLOT(coinControlUpdateLabels()));
     connect(entry, SIGNAL(subtractFeeFromAmountChanged()), this, SLOT(coinControlUpdateLabels()));
+    connect(entry, SIGNAL(useAvailableBalance(SendCoinsEntry*)), this, SLOT(useAvailableBalance(SendCoinsEntry*)));
 
     // Focus the field, so that entry can start immediately
     entry->clear();
@@ -493,6 +494,38 @@ void SendCoinsDialog::removeEntry(SendCoinsEntry* entry)
     entry->deleteLater();
 
     updateTabsAndLabels();
+}
+
+void SendCoinsDialog::useAvailableBalance(SendCoinsEntry* entry)
+{
+    if(!model || !entry)
+        return;
+
+    const CCoinControl* coinControl = NULL;
+    if(model->getOptionsModel() &&
+       model->getOptionsModel()->getCoinControlFeatures() &&
+       CoinControlDialog::coinControl->HasSelected()) {
+        coinControl = CoinControlDialog::coinControl;
+    }
+
+    CAmount nAvailable = model->getBalance(coinControl);
+    for(int i = 0; i < ui->entries->count(); ++i)
+    {
+        SendCoinsEntry *otherEntry = qobject_cast<SendCoinsEntry*>(ui->entries->itemAt(i)->widget());
+        if(otherEntry && !otherEntry->isHidden() && otherEntry != entry)
+        {
+            CAmount nOtherAmount = otherEntry->getValue().amount;
+            if(nOtherAmount > 0)
+                nAvailable -= nOtherAmount;
+        }
+    }
+
+    if(nAvailable < 0)
+        nAvailable = 0;
+
+    entry->setSubtractFeeFromAmount(true);
+    entry->setAmount(nAvailable);
+    coinControlUpdateLabels();
 }
 
 QWidget *SendCoinsDialog::setupTabChain(QWidget *prev)

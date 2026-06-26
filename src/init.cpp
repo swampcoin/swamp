@@ -448,6 +448,7 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-listen", _("Accept connections from outside (default: 1 if no -proxy or -connect)"));
     strUsage += HelpMessageOpt("-listenonion", strprintf(_("Automatically create Tor hidden service (default: %d)"), DEFAULT_LISTEN_ONION));
     strUsage += HelpMessageOpt("-maxconnections=<n>", strprintf(_("Maintain at most <n> connections to peers (temporary service connections excluded) (default: %u)"), DEFAULT_MAX_PEER_CONNECTIONS));
+    strUsage += HelpMessageOpt("-maxoutboundconnections=<n>", strprintf(_("Maintain at most <n> automatic outbound connections to peers (default: %d, max: %d)"), DEFAULT_MAX_OUTBOUND_CONNECTIONS, MAX_MAX_OUTBOUND_CONNECTIONS));
     strUsage += HelpMessageOpt("-maxreceivebuffer=<n>", strprintf(_("Maximum per-connection receive buffer, <n>*1000 bytes (default: %u)"), DEFAULT_MAXRECEIVEBUFFER));
     strUsage += HelpMessageOpt("-maxsendbuffer=<n>", strprintf(_("Maximum per-connection send buffer, <n>*1000 bytes (default: %u)"), DEFAULT_MAXSENDBUFFER));
     strUsage += HelpMessageOpt("-onion=<ip:port>", strprintf(_("Use separate SOCKS5 proxy to reach peers via Tor hidden services (default: %s)"), "-proxy"));
@@ -726,6 +727,63 @@ void CleanupBlockRevFiles()
     }
 }
 
+static bool InvalidateKnownBadForkBlock(const CChainParams& chainparams)
+{
+    static const uint256 hashKnownBadForkBlock = uint256S("0x000000a1df3b73036c5662591a6736f9224be7934e1a30eecf0183475181d9aa");
+
+    CValidationState state;
+    bool fNeedActivateBestChain = false;
+    bool fWasOnBadFork = false;
+    bool fResetBestHeader = false;
+
+    {
+        LOCK(cs_main);
+        BlockMap::iterator it = mapBlockIndex.find(hashKnownBadForkBlock);
+        if (it == mapBlockIndex.end()) {
+            return true;
+        }
+
+        CBlockIndex* pindexBad = it->second;
+        if (pindexBad->nStatus & BLOCK_FAILED_MASK) {
+            return true;
+        }
+
+        fWasOnBadFork = chainActive.Contains(pindexBad);
+        fResetBestHeader = pindexBestHeader && pindexBestHeader->nHeight >= pindexBad->nHeight &&
+                           pindexBestHeader->GetAncestor(pindexBad->nHeight) == pindexBad;
+
+        LogPrintf("Invalidating known bad fork block at startup: %s height=%d\n", hashKnownBadForkBlock.ToString(), pindexBad->nHeight);
+        if (!InvalidateBlock(state, chainparams.GetConsensus(), pindexBad)) {
+            return error("%s: InvalidateBlock failed for %s", __func__, hashKnownBadForkBlock.ToString());
+        }
+
+        fNeedActivateBestChain = true;
+    }
+
+    if (fNeedActivateBestChain && state.IsValid()) {
+        if (!ActivateBestChain(state, chainparams, NULL)) {
+            return error("%s: ActivateBestChain failed after invalidating %s", __func__, hashKnownBadForkBlock.ToString());
+        }
+
+        if (fResetBestHeader) {
+            LOCK(cs_main);
+            pindexBestHeader = chainActive.Tip();
+            LogPrintf("Reset best header pointer to active tip after invalidating known bad fork\n");
+        }
+
+        if (fWasOnBadFork && g_connman) {
+            LogPrintf("Clearing banned peers after rollback from known bad fork\n");
+            g_connman->ClearBanned();
+        }
+    }
+
+    if (!state.IsValid()) {
+        return error("%s: failed to invalidate known bad fork block %s: %s", __func__, hashKnownBadForkBlock.ToString(), state.GetRejectReason());
+    }
+
+    return true;
+}
+
 void ThreadImport(std::vector<boost::filesystem::path> vImportFiles)
 {
     const CChainParams& chainparams = Params();
@@ -776,6 +834,12 @@ void ThreadImport(std::vector<boost::filesystem::path> vImportFiles)
         } else {
             LogPrintf("Warning: Could not open blocks file %s\n", path.string());
         }
+    }
+
+    if (!InvalidateKnownBadForkBlock(chainparams)) {
+        LogPrintf("Failed to invalidate known bad fork block during startup import\n");
+        StartShutdown();
+        return;
     }
 
     // scan for better chains in the block chain database, that are not yet connected in the active best chain
@@ -1041,6 +1105,8 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     int nBind = std::max((int)mapArgs.count("-bind") + (int)mapArgs.count("-whitebind"), 1);
     int nUserMaxConnections = GetArg("-maxconnections", DEFAULT_MAX_PEER_CONNECTIONS);
     int nMaxConnections = std::max(nUserMaxConnections, 0);
+    int nUserMaxOutboundConnections = GetArg("-maxoutboundconnections", DEFAULT_MAX_OUTBOUND_CONNECTIONS);
+    int nMaxOutboundConnections = std::max(std::min(nUserMaxOutboundConnections, MAX_MAX_OUTBOUND_CONNECTIONS), DEFAULT_MAX_OUTBOUND_CONNECTIONS);
 
     // Trim requested connection counts, to fit into system limitations
     nMaxConnections = std::max(std::min(nMaxConnections, (int)(FD_SETSIZE - nBind - MIN_CORE_FILEDESCRIPTORS)), 0);
@@ -1051,6 +1117,9 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
     if (nMaxConnections < nUserMaxConnections)
         InitWarning(strprintf(_("Reducing -maxconnections from %d to %d, because of system limitations."), nUserMaxConnections, nMaxConnections));
+
+    if (nMaxOutboundConnections != nUserMaxOutboundConnections)
+        InitWarning(strprintf(_("Adjusting -maxoutboundconnections from %d to %d (allowed range: %d..%d)."), nUserMaxOutboundConnections, nMaxOutboundConnections, DEFAULT_MAX_OUTBOUND_CONNECTIONS, MAX_MAX_OUTBOUND_CONNECTIONS));
 
     // ********************************************************* Step 3: parameter-to-internal-flags
 
@@ -1635,6 +1704,11 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
                     strLoadError = _("Corrupted block database detected");
                     break;
                 }
+
+                if (!InvalidateKnownBadForkBlock(chainparams)) {
+                    strLoadError = _("Failed to invalidate known bad fork block");
+                    break;
+                }
             } catch (const std::exception& e) {
                 if (fDebug) LogPrintf("%s\n", e.what());
                 strLoadError = _("Error opening block database");
@@ -2069,7 +2143,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     connOptions.nLocalServices = nLocalServices;
     connOptions.nRelevantServices = nRelevantServices;
     connOptions.nMaxConnections = nMaxConnections;
-    connOptions.nMaxOutbound = std::min(MAX_OUTBOUND_CONNECTIONS, connOptions.nMaxConnections);
+    connOptions.nMaxOutbound = std::min(nMaxOutboundConnections, connOptions.nMaxConnections);
     connOptions.nMaxFeeler = 1;
     connOptions.nBestHeight = chainActive.Height();
     connOptions.uiInterface = &uiInterface;

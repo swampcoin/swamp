@@ -151,7 +151,7 @@
      </widget>
     </item>
     <item row="2" column="1">
-     <layout class="QHBoxLayout" name="horizontalLayoutAmount" stretch="0,1">
+     <layout class="QHBoxLayout" name="horizontalLayoutAmount" stretch="0,0,1,0">
       <item>
        <widget class="BitcoinAmountField" name="payAmount"/>
       </item>
@@ -162,6 +162,32 @@
         </property>
         <property name="text">
          <string>S&amp;ubtract fee from amount</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacerAmountRow">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="useAvailableButton">
+        <property name="toolTip">
+         <string>Use the remaining available balance for this recipient and subtract the fee from the amount.</string>
+        </property>
+        <property name="text">
+         <string>Use Available</string>
+        </property>
+        <property name="autoDefault">
+         <bool>false</bool>
         </property>
        </widget>
       </item>

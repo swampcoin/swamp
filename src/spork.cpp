@@ -136,6 +136,7 @@ bool CSporkManager::IsSporkActive(int nSporkID)
             case SPORK_13_OLD_SUPERBLOCK_FLAG:              r = SPORK_13_OLD_SUPERBLOCK_FLAG_DEFAULT; break;
             case SPORK_14_REQUIRE_SENTINEL_FLAG:            r = SPORK_14_REQUIRE_SENTINEL_FLAG_DEFAULT; break;
 			case SPORK_15_REQUIRE_NEW_PROTOCOL:             r = SPORK_15_REQUIRE_NEW_PROTOCOL_DEFAULT; break;
+            case SPORK_16_STRICT_MASTERNODE_PAYMENT_ENFORCEMENT: r = SPORK_16_STRICT_MASTERNODE_PAYMENT_ENFORCEMENT_DEFAULT; break;
             default:
                 LogPrint("spork", "CSporkManager::IsSporkActive -- Unknown Spork ID %d\n", nSporkID);
                 r = 4070908800ULL; // 2099-1-1 i.e. off by default
@@ -163,6 +164,7 @@ int64_t CSporkManager::GetSporkValue(int nSporkID)
         case SPORK_13_OLD_SUPERBLOCK_FLAG:              return SPORK_13_OLD_SUPERBLOCK_FLAG_DEFAULT;
         case SPORK_14_REQUIRE_SENTINEL_FLAG:            return SPORK_14_REQUIRE_SENTINEL_FLAG_DEFAULT;
 		case SPORK_15_REQUIRE_NEW_PROTOCOL:             return SPORK_15_REQUIRE_NEW_PROTOCOL_DEFAULT;
+        case SPORK_16_STRICT_MASTERNODE_PAYMENT_ENFORCEMENT: return SPORK_16_STRICT_MASTERNODE_PAYMENT_ENFORCEMENT_DEFAULT;
         default:
             LogPrint("spork", "CSporkManager::GetSporkValue -- Unknown Spork ID %d\n", nSporkID);
             return -1;
@@ -182,6 +184,7 @@ int CSporkManager::GetSporkIDByName(std::string strName)
     if (strName == "SPORK_13_OLD_SUPERBLOCK_FLAG")              return SPORK_13_OLD_SUPERBLOCK_FLAG;
     if (strName == "SPORK_14_REQUIRE_SENTINEL_FLAG")            return SPORK_14_REQUIRE_SENTINEL_FLAG;
 	if (strName == "SPORK_15_REQUIRE_NEW_PROTOCOL")             return SPORK_15_REQUIRE_NEW_PROTOCOL;
+    if (strName == "SPORK_16_STRICT_MASTERNODE_PAYMENT_ENFORCEMENT") return SPORK_16_STRICT_MASTERNODE_PAYMENT_ENFORCEMENT;
 
     LogPrint("spork", "CSporkManager::GetSporkIDByName -- Unknown Spork name '%s'\n", strName);
     return -1;
@@ -200,6 +203,7 @@ std::string CSporkManager::GetSporkNameByID(int nSporkID)
         case SPORK_13_OLD_SUPERBLOCK_FLAG:              return "SPORK_13_OLD_SUPERBLOCK_FLAG";
         case SPORK_14_REQUIRE_SENTINEL_FLAG:            return "SPORK_14_REQUIRE_SENTINEL_FLAG";
 		case SPORK_15_REQUIRE_NEW_PROTOCOL:             return "SPORK_15_REQUIRE_NEW_PROTOCOL";
+        case SPORK_16_STRICT_MASTERNODE_PAYMENT_ENFORCEMENT: return "SPORK_16_STRICT_MASTERNODE_PAYMENT_ENFORCEMENT";
         default:
             LogPrint("spork", "CSporkManager::GetSporkNameByID -- Unknown Spork ID %d\n", nSporkID);
             return "Unknown";

@@ -3193,11 +3193,29 @@ static bool CheckIndexAgainstCheckpoint(const CBlockIndex* pindexPrev, CValidati
     if (*pindexPrev->phashBlock == chainparams.GetConsensus().hashGenesisBlock)
         return true;
 
-    int nHeight = pindexPrev->nHeight+1;
-    // Don't accept any forks from the main chain prior to last checkpoint
-    CBlockIndex* pcheckpoint = Checkpoints::GetLastCheckpoint(chainparams.Checkpoints());
-    if (pcheckpoint && nHeight < pcheckpoint->nHeight)
-        return state.DoS(100, error("%s: forked chain older than last checkpoint (height %d)", __func__, nHeight));
+    int nHeight = pindexPrev->nHeight + 1;
+    const MapCheckpoints& checkpoints = chainparams.Checkpoints().mapCheckpoints;
+    MapCheckpoints::const_iterator it = checkpoints.upper_bound(nHeight);
+    if (it == checkpoints.begin())
+        return true;
+
+    --it;
+    const int nCheckpointHeight = it->first;
+    const uint256& hashCheckpoint = it->second;
+
+    if (nHeight == nCheckpointHeight) {
+        if (hash != hashCheckpoint) {
+            return state.DoS(100, error("%s: checkpoint mismatch at height %d", __func__, nHeight),
+                             REJECT_INVALID, "bad-checkpoint");
+        }
+        return true;
+    }
+
+    const CBlockIndex* pindexCheckpoint = pindexPrev->GetAncestor(nCheckpointHeight);
+    if (!pindexCheckpoint || *pindexCheckpoint->phashBlock != hashCheckpoint) {
+        return state.DoS(100, error("%s: forked chain does not match checkpoint at height %d", __func__, nCheckpointHeight),
+                         REJECT_INVALID, "bad-fork-prior-to-checkpoint");
+    }
 
     return true;
 }

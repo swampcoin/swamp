@@ -800,6 +800,27 @@ UniValue submitblock(const UniValue& params, bool fHelp)
     if (!DecodeHexBlk(block, params[0].get_str()))
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Block decode failed");
 
+    if (block.vtx.empty() || !block.vtx[0].IsCoinBase()) {
+        CValidationState state;
+        state.Invalid(false, REJECT_INVALID, "bad-cb-missing");
+        return BIP22ValidationResult(state);
+    }
+
+    int nBlockHeight = -1;
+    {
+        LOCK(cs_main);
+        BlockMap::const_iterator miPrev = mapBlockIndex.find(block.hashPrevBlock);
+        if (miPrev != mapBlockIndex.end()) {
+            nBlockHeight = miPrev->second->nHeight + 1;
+        }
+    }
+
+    if (nBlockHeight > 0 && !IsBlockPayeeValidForSubmitBlock(block.vtx[0], nBlockHeight, block.vtx[0].GetValueOut())) {
+        CValidationState state;
+        state.Invalid(false, REJECT_INVALID, "bad-cb-payee");
+        return BIP22ValidationResult(state);
+    }
+
     uint256 hash = block.GetHash();
     bool fBlockPresent = false;
     {

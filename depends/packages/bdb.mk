@@ -17,11 +17,9 @@ define $(package)_preprocess_cmds
   sed -i.old 's/__atomic_compare_exchange/__atomic_compare_exchange_db/' dbinc/atomic.h && \
   sed -i.old 's/atomic_init/atomic_init_db/' dbinc/atomic.h mp/mp_region.c mp/mp_mvcc.c mp/mp_fget.c mutex/mut_method.c mutex/mut_tas.c && \
   if echo "$(host)" | grep -q "aarch64"; then \
-    echo "Updating config files for ARM64 support..." && \
-    $(build_DOWNLOAD) dist/config.guess.tmp 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD' && \
-    $(build_DOWNLOAD) dist/config.sub.tmp 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD' && \
-    mv -f dist/config.guess.tmp dist/config.guess && \
-    mv -f dist/config.sub.tmp dist/config.sub && \
+    echo "Updating config files for ARM64 support from local depends copies..." && \
+    cp -f $(BASEDIR)/config.guess dist/config.guess && \
+    cp -f $(BASEDIR)/config.sub dist/config.sub && \
     chmod +x dist/config.guess dist/config.sub; \
   fi
 endef
